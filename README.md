@@ -1,3 +1,5 @@
+Stealthy Wi-Fi Password Extractor - Educational Cybersecurity Script
+
 This educational script demonstrates a common cybersecurity threat: stealthy Wi-Fi password extraction from a Windows machine. Designed as part of a broader cybersecurity awareness course, this script showcases how attackers can move a script to the Startup folder, hide it from users, add it to the Windows Registry for persistence, and extract saved Wi-Fi passwords—all without user detection.
 
 Features
